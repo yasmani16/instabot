@@ -17,7 +17,7 @@ def time_delay(delay):
         delay:str: SS S M H 
         """
         if delay == 'SS':
-            num = random.randrange(0,5)
+            num = random.randrange(1,5)
             logger.info("Time delay {}".format(num))
             time.sleep(num)
         if delay == 'S':
@@ -46,12 +46,17 @@ def login(webdriver):
     passwordInput.send_keys(Constants.INST_PASS)
     logger.info("Writing password")
     time_delay('SS')
-    login_btn = webdriver.find_elements_by_css_selector('button')[2]
+    login_btn = webdriver.find_elements_by_css_selector('button')[3]
     # login_btn = webdriver.find_element_by_xpath('//*[@id="react-root"]/section/main/article/div/div/div/form/div[6]/button')
     print(login_btn.text)
+    scroll_down(webdriver)
+    time.sleep(5)
     login_btn.click()
     logger.info("Clicking log in button")
     time_delay('SS')
+
+def scroll_down(webdriver):
+    webdriver.execute_script("window.scrollTo(0, 1000)")
 
 def follow_people(webdriver):
     logger.info("Starting follow people function")
@@ -72,36 +77,39 @@ def follow_people(webdriver):
         logger.info("Looking up tag {}".format(hashtag))
         time_delay('SS')
 
-        #Get the first post thumbnail and click on it
-        first_thumbnail = webdriver.find_element_by_xpath(
-            '//*[@id="react-root"]/section/main/article/div[1]/div/div/div[1]/div[1]/a/div')
+        # Scroll down page
 
-        first_thumbnail.click()
-        time.sleep(random.randint(2,5))
+        scroll_down(webdriver)
+        time_delay('SS')
+        scroll_down(webdriver)
+        time_delay('SS')
 
-        likebut = webdriver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/div/article/div[2]/section[2]/div/div/a')
-        
-        likebut.click()
-
-        
-
-        #get all the usernames in page
+        #  grabs all username links
         allusernames = webdriver.find_elements_by_xpath("//a[@href]")
-        for a in allusernames:
-            print(a.get_attribute("href"))
-        time.sleep(30)
-        try:
-            #iterate over the first 200 posts in the hashtag
-            for x in range(1,20):
-                t_start = datetime.datetime.now()
-                #Get the poster's username
-                username = webdriver.find_element_by_xpath('//*[@id="f30743eb9448574"]/div/a').text
-                logger.info("Located Username {}".format(username))
-                likes_over_limit = False
-                try:
+        usernames_links = []
+        for allusername in allusernames:
+            if "/p/" in allusername.get_attribute("href"):
+                usernames_links.append(allusername.get_attribute("href"))
+
+        for link in usernames_links:
+            webdriver.get(link)
+            time_delay('SS')
+            #Get the first post thumbnail and click on it
+            # first_thumbnail = webdriver.find_element_by_xpath(
+            #     '//*[@id="react-root"]/section/main/article/div[1]/div/div/div[1]/div[1]/a/div')
+
+            # first_thumbnail.click()
+            time.sleep(random.randint(2,5))
+            t_start = datetime.datetime.now()
+            #Get the poster's username
+            logger.info(t_start , " Finding posters name")
+            username = webdriver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/div/article/header/div[2]/div[1]/div[1]/h2/a').text
+            logger.info("Located Username {}".format(username))
+            likes_over_limit = False
+            try:
                     #get number of likes and compare it to the maximum number of likes to ignore post
                     likes = int(webdriver.find_element_by_xpath(
-                        '/html/body/div[3]/div[2]/div/article/div[2]/section[2]/div/div/button/span').text)
+                        '//*[@id="react-root"]/section/main/div/div/article/div[2]/section[2]/div/div/a/span').text)
                     logger.info("Username {} has {} likes".format(username, likes))
                     if likes > Constants.LIKES_LIMIT:
                         print("likes over {0}".format(Constants.LIKES_LIMIT))
@@ -113,12 +121,12 @@ def follow_people(webdriver):
                     if username not in prev_user_list and not likes_over_limit:
                         #Don't press the button if the text doesn't say follow
                         logger.info("User is not Followed and is eligible to be followed")
-                        if webdriver.find_element_by_xpath('/html/body/div[3]/div[2]/div/article/header/div[2]/div[1]/div[2]/button').text == 'Follow':
+                        if webdriver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/div/article/header/div[2]/div[1]/div[2]/button').text == 'Follow':
                             #Use DBUsers to add the new user to the database
                             DBUsers.add_user(username)
                             logger.info("{} has been added to added to DB")
                             #Click follow
-                            webdriver.find_element_by_xpath('/html/body/div[3]/div[2]/div/article/header/div[2]/div[1]/div[2]/button').click()
+                            webdriver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/div/article/header/div[2]/div[1]/div[2]/button').click()
                             followed += 1
                             logger.info("Followed {0}, #{1}".format(username, followed))
                             print("Followed: {0}, #{1}".format(username, followed))
@@ -127,7 +135,7 @@ def follow_people(webdriver):
 
                         # Liking the picture
                         button_like = webdriver.find_element_by_xpath(
-                            '/html/body/div[3]/div[2]/div/article/div[2]/section[1]/span[1]/button')
+                            '//*[@id="react-root"]/section/main/div/div/article/div[2]/section[1]/span[1]/button')
 
                         button_like.click()
                         likes += 1
@@ -135,30 +143,85 @@ def follow_people(webdriver):
                         print("Liked {0}'s post, #{1}".format(username, likes))
                         time.sleep(random.randint(5, 18))
 
+            except:
+                traceback.print_exc()
+                logger.Error(traceback.print_exc)
+                continue
+            t_end = datetime.datetime.now()
 
-                    # Next picture
-                    webdriver.find_element_by_link_text('Next').click()
-                    webdriver.find_elements_by_xpath("//a[contains(text(), 'Next')]")[0].click()
-                    webdriver.find_element_by_class('coreSpriteRightPaginationArrow').click()
-                    webdriver.find_elements_by_css_selector('body > div._2dDPU.vCf6V > div.EfHg9 > div > div > a').click()
-                    print()
-                    time.sleep(random.randint(20, 30))
+            # Like picture
+            likebut = webdriver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/div/article/div[2]/section[2]/div/div/a')
+            
+            likebut.click()
+        # try:
+        #     #iterate over the first 200 posts in the hashtag
+        #     for x in range(1,20):
+        #         t_start = datetime.datetime.now()
+        #         #Get the poster's username
+        #         username = webdriver.find_element_by_xpath('//*[@id="f30743eb9448574"]/div/a').text
+        #         logger.info("Located Username {}".format(username))
+        #         likes_over_limit = False
+        #         try:
+        #             #get number of likes and compare it to the maximum number of likes to ignore post
+        #             likes = int(webdriver.find_element_by_xpath(
+        #                 '/html/body/div[3]/div[2]/div/article/div[2]/section[2]/div/div/button/span').text)
+        #             logger.info("Username {} has {} likes".format(username, likes))
+        #             if likes > Constants.LIKES_LIMIT:
+        #                 print("likes over {0}".format(Constants.LIKES_LIMIT))
+        #                 likes_over_limit = True
+
+
+        #             print("Detected: {0}".format(username))
+        #             #If username isn't stored in the database and the likes are in the acceptable range
+        #             if username not in prev_user_list and not likes_over_limit:
+        #                 #Don't press the button if the text doesn't say follow
+        #                 logger.info("User is not Followed and is eligible to be followed")
+        #                 if webdriver.find_element_by_xpath('/html/body/div[3]/div[2]/div/article/header/div[2]/div[1]/div[2]/button').text == 'Follow':
+        #                     #Use DBUsers to add the new user to the database
+        #                     DBUsers.add_user(username)
+        #                     logger.info("{} has been added to added to DB")
+        #                     #Click follow
+        #                     webdriver.find_element_by_xpath('/html/body/div[3]/div[2]/div/article/header/div[2]/div[1]/div[2]/button').click()
+        #                     followed += 1
+        #                     logger.info("Followed {0}, #{1}".format(username, followed))
+        #                     print("Followed: {0}, #{1}".format(username, followed))
+        #                     new_followed.append(username)
+
+
+        #                 # Liking the picture
+        #                 button_like = webdriver.find_element_by_xpath(
+        #                     '/html/body/div[3]/div[2]/div/article/div[2]/section[1]/span[1]/button')
+
+        #                 button_like.click()
+        #                 likes += 1
+        #                 logger.info("Liked {0}'s post, #{1}".format(username, likes))
+        #                 print("Liked {0}'s post, #{1}".format(username, likes))
+        #                 time.sleep(random.randint(5, 18))
+
+
+        #             # Next picture
+        #             webdriver.find_element_by_link_text('Next').click()
+        #             webdriver.find_elements_by_xpath("//a[contains(text(), 'Next')]")[0].click()
+        #             webdriver.find_element_by_class('coreSpriteRightPaginationArrow').click()
+        #             webdriver.find_elements_by_css_selector('body > div._2dDPU.vCf6V > div.EfHg9 > div > div > a').click()
+        #             print()
+        #             time.sleep(random.randint(20, 30))
                     
-                except:
-                    traceback.print_exc()
-                    logger.Error(traceback.print_exc)
-                    continue
-                t_end = datetime.datetime.now()
+        #         except:
+        #             traceback.print_exc()
+        #             logger.Error(traceback.print_exc)
+        #             continue
+        #         t_end = datetime.datetime.now()
 
-                #calculate elapsed time
-                t_elapsed = t_end - t_start
-                logger.info("This post took {0} seconds".format(t_elapsed.total_seconds()))
-                print("This post took {0} seconds".format(t_elapsed.total_seconds()))
+        #         #calculate elapsed time
+        #         t_elapsed = t_end - t_start
+        #         logger.info("This post took {0} seconds".format(t_elapsed.total_seconds()))
+        #         print("This post took {0} seconds".format(t_elapsed.total_seconds()))
 
 
-        except:
-            traceback.print_exc()
-            continue
+        # except:
+        #     traceback.print_exc()
+        #     continue
 
         #add new list to old list
         for n in range(0, len(new_followed)):

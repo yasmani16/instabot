@@ -20,5 +20,5 @@ def init():
   DATABASE = obj['db']['database']
   LIKES_LIMIT = obj['config']['likes_over']
   CHECK_FOLLOWERS = obj['config']['check_followers']
-  HASHTAGS = "followforfollowback"
+  HASHTAGS = ["followforfollowback"]
   DAYS_TO_UNFOLLOW = obj['config']['days_to_unfollow']
